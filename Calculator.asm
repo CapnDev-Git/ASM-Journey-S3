@@ -129,4 +129,4 @@ StringME1 	dc.b 	"32767",0		; returns 0
 StringME1 	dc.b 	"32768",0		; returns 1
 
 ; Constants
-S32676	 	dc.b 	"32767",0		; returns
+S32676	 	dc.b 	"32767",0		; constant
