@@ -2,7 +2,9 @@
 			; Vector Initialization
 			; ==============================
 
-			org 	$4
+			org 	$0
+			
+vector_000 	dc.l 	$ffb500
 vector_001 	dc.l 	Main
 
 			; ==============================
@@ -14,11 +16,22 @@ Main
 			;movea.l #StringRS1,a0
 			;jsr 	RemoveSpace
 			
-			;movea.l	#StringCE1,a0
+			;movea.l	#StringCE1-2,a0
 			;jsr 	IsCharError
 			
-			movea.l	#StringME1,a0
-			jsr 	IsMaxError
+			;movea.l	#StringME1-4,a0
+			;jsr 	IsMaxError
+			
+			;movea.l	#StringConv1-5,a0
+			;jsr 	Convert
+			
+			;lea 	sTest,a0
+			;move.b 	#5,d1
+			;move.b 	#20,d2
+			;jsr 	Print
+			
+			movea.l	#sTest2,a0
+			jsr		NextOp
 			
 			illegal
 			
@@ -41,8 +54,27 @@ StrLen 		move.l 	a0,-(a7) ; Save A0 on the stack.
 
 			; ==============================
 
+Atoui		movem.l d1/a0,-(a7)
+
+			clr.l d0
+			clr.l d1
+
+\loop		move.b (a0)+,d1
+			beq \quit
+
+			subi.b #'0',d1
+
+			mulu.w #10,d0
+			add.l d1,d0
+
+			bra		\loop
+\quit		movem.l (a7)+,d1/a0
+			rts
+
+			; ==============================
+
 RemoveSpace	movem.l a0/a1,-(a7)
-			movea.l	#StringRS1,a1
+			movea.l	a0,a1
 			
 \loop		tst.b	(a0)
 			beq		\addempty
@@ -73,7 +105,7 @@ IsCharError	move.l	a0,-(a7)
 			cmp.b	#'9',(a0)
 			bhi		\true
 			
-			adda.w 	#1,a0
+			addq.l 	#1,a0
 			jmp 	\loop		
 
 \false		andi.b 	#%11111011,ccr ; Set the Z flag to 0 (false).
@@ -114,6 +146,70 @@ IsMaxError	movem.l	a0/a1/d0,-(a7)
 			rts
 
 			; ==============================
+
+Convert		move.l	a0,-(a7)
+			
+			cmpi.b	#0,(a0)
+			beq		\false
+			
+			jsr 	IsCharError
+			beq		\false
+			
+			jsr 	IsMaxError
+			beq		\false
+
+			jsr		Atoui
+			bra		\true
+
+\false		andi.b 	#%11111011,ccr ; Set the Z flag to 0 (false).
+			jmp		\quit
+			
+\true		ori.b 	#%00000100,ccr ; Set the Z flag to 1 (true).
+			jmp		\quit
+
+\quit		move.l	(a7)+,a0
+			rts
+
+			; ==============================
+
+Print		movem.l	d0-d2/a0,-(a7)
+
+\loop		move.b	(a0)+,d0
+			beq		\quit
+			
+			jsr 	PrintChar
+			
+			addq.b	#1,d1	
+			bra		\loop
+
+\quit		movem.l	(a7)+,a0/d0-d2
+			rts
+
+PrintChar 	incbin 	"PrintChar.bin"
+
+			; ==============================
+
+NextOp		move.l	d0,-(a7)
+
+\loop		move.b	(a0),d0
+			beq		\quit
+
+			cmpi.b	#'+',d0
+			beq 	\quit
+			cmpi.b	#'-',d0
+			beq 	\quit
+			cmpi.b	#'*',d0
+			beq 	\quit
+			cmpi.b	#'/',d0
+			beq 	\quit
+
+			adda.l	#1,a0
+			bra		\loop
+
+\quit		move.l	(a7)+,d0
+			rts
+
+			; ==============================
 			; Data
 			; ==============================
 			
@@ -124,9 +220,20 @@ StringCE1 	dc.b 	"512",0 		; returns 0
 StringCE2 	dc.b 	"5e12",0 		; returns 1
 
 StringME1 	dc.b 	"512",0			; returns 0
-StringME1 	dc.b 	"32000",0		; returns 0
-StringME1 	dc.b 	"32767",0		; returns 0
-StringME1 	dc.b 	"32768",0		; returns 1
+StringME2 	dc.b 	"32000",0		; returns 0
+StringME3 	dc.b 	"32767",0		; returns 0
+StringME4 	dc.b 	"32768",0		; returns 1
+
+StringConv1 dc.b 	"1568",0		; returns 1 w/ D0 = 1568
+StringConv2 dc.b 	"879",0			; returns 1 w/ D0 = 879
+StringConv3	dc.b 	"8a9",0			; returns 0
+StringConv4 dc.b 	"",0			; returns 0
+StringConv5 dc.b 	"40000",0		; returns 0
+
+sTest		dc.b	"Oui oui aller Eliott Flechtner sait programmer",0
+
+sTest2		dc.b	"104+9*2-3",0
+
 
 ; Constants
 S32676	 	dc.b 	"32767",0		; constant
