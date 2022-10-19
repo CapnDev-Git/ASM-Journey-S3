@@ -25,12 +25,12 @@ Main
 			;movea.l	#StringConv1-5,a0
 			;jsr 	Convert
 			
-			;lea 	sTest,a0
+			;lea 	StringPrint,a0
 			;move.b 	#5,d1
 			;move.b 	#20,d2
 			;jsr 	Print
 			
-			movea.l	#sTest2,a0
+			movea.l	#StringNO1,a0
 			jsr		NextOp
 			
 			illegal
@@ -230,10 +230,9 @@ StringConv3	dc.b 	"8a9",0			; returns 0
 StringConv4 dc.b 	"",0			; returns 0
 StringConv5 dc.b 	"40000",0		; returns 0
 
-sTest		dc.b	"Oui oui aller Eliott Flechtner sait programmer",0
+StringPrint	dc.b	"Hello, World!",0
 
-sTest2		dc.b	"104+9*2-3",0
-
+StringNO1	dc.b	"104+9*2-3",0
 
 ; Constants
 S32676	 	dc.b 	"32767",0		; constant
