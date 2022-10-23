@@ -126,7 +126,7 @@ IsMaxError	movem.l	a0/a1/d0,-(a7)
 			blo		\lowereq
 			bhi		\higher
 			
-			movea.l	#S32676,a1
+			movea.l	#S32767,a1
 			
 \loop		tst.b	(a0)
 			beq		\lowereq
@@ -235,4 +235,4 @@ StringPrint	dc.b	"Hello, World!",0
 StringNO1	dc.b	"104+9*2-3",0
 
 ; Constants
-S32676	 	dc.b 	"32767",0		; constant
+S32767	 	dc.b 	"32767",0		; constant
