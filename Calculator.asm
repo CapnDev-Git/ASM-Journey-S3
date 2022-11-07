@@ -29,9 +29,9 @@ Main
 			;move.b 	#5,d1
 			;move.b 	#20,d2
 			;jsr 	Print
-			k
+			
 			movea.l	#StringNO1,a0
-			bsr		GetNum
+			bsr		GetExpr
 			
 			illegal
 			
@@ -236,7 +236,7 @@ GetNum		movem.l	d1/a1-a2,-(a7)
 			; ==============================
 
 GetExpr		movem.l	d1-d2/a0,-(a7)
-
+			clr.l	d2
 			bsr		GetNum
 			bne		\false
 			add.b	d0,d1
@@ -261,7 +261,8 @@ GetExpr		movem.l	d1-d2/a0,-(a7)
 			
 \true		ori.b 	#%00000100,ccr ; Set the Z flag to 1 (true).
 
-\quit		movem.l	(a7)+,d1-d2/a0
+\quit		move.l	d1,d0
+			movem.l	(a7)+,d1-d2/a0
 			rts
 
 			; ==============================
