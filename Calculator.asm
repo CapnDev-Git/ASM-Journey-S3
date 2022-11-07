@@ -29,9 +29,9 @@ Main
 			;move.b 	#5,d1
 			;move.b 	#20,d2
 			;jsr 	Print
-			
+			k
 			movea.l	#StringNO1,a0
-			jsr		NextOp
+			bsr		GetNum
 			
 			illegal
 			
@@ -73,140 +73,195 @@ Atoui		movem.l d1/a0,-(a7)
 
 			; ==============================
 
-RemoveSpace	movem.l a0/a1,-(a7)
+RemoveSpace	movem.l d0/a0-a1,-(a7)
+			
 			movea.l	a0,a1
 			
-\loop		tst.b	(a0)
-			beq		\addempty
+\loop		move.b	(a0)+,d0
 			
-			cmp.b 	#' ',(a0)
-			beq 	\space
-			move.b	(a0)+,(a1)+
-			jmp 	\loop
-
-\space		adda.w 	#1,a0
-			jmp 	\loop
-
-\addempty	move.b	#0,(a1)
-			beq		\quit
+			cmpi.b 	#' ',d0
+			beq 	\loop
 			
-\quit 		movem.l (a7)+,a0/a1
+			move.b	d0,(a1)+
+			bne 	\loop
+			
+\quit 		movem.l (a7)+,d0/a0-a1
 			rts
 
 			; ==============================
 
-IsCharError	move.l	a0,-(a7)
+IsCharError	movem.l	d0/a0,-(a7)
 
-\loop		tst.b 	(a0)
+\loop		move.b	(a0)+,d0
 			beq		\false
 			
-			cmp.b	#'0',(a0)
+			cmpi.b	#'0',d0
 			blo		\true
-			cmp.b	#'9',(a0)
+			
+			cmpi.b	#'9',d0
+			bls		\loop
+			
+\true		ori.b 	#%00000100,ccr ; Set the Z flag to 1 (true).
+			bra		\quit
+			
+\false		andi.b 	#%11111011,ccr ; Set the Z flag to 0 (false).
+
+\quit		movem.l	(a7)+,d0/a0
+			rts
+
+			; ==============================
+
+IsMaxError	movem.l	d0/a0,-(a7)
+			bsr 	StrLen
+			
+			cmpi.l	#5,d0
 			bhi		\true
+			blo		\false
 			
-			addq.l 	#1,a0
-			jmp 	\loop		
+			cmpi.b 	#'3',(a0)+
+			bhi 	\true
+			blo 	\false
+			
+			cmpi.b 	#'2',(a0)+
+			bhi 	\true
+			blo 	\false
+			
+			cmpi.b 	#'7',(a0)+
+			bhi 	\true
+			blo 	\false
+			
+			cmpi.b 	#'6',(a0)+
+			bhi 	\true
+			blo 	\false
+			
+			cmpi.b 	#'7',(a0)
+			bhi 	\true
 
 \false		andi.b 	#%11111011,ccr ; Set the Z flag to 0 (false).
-			jmp		\quit
+			bra		\quit
 			
+\true		ori.b 	#%00000100,ccr ; Set the Z flag to 1 (true).
+
+\quit		movem.l	(a7)+,d0/a0
+			rts
+
+			; ==============================
+
+Convert		tst.b	(a0)
+			beq		\false
+			
+			bsr 	IsCharError
+			beq		\false
+			
+			bsr 	IsMaxError
+			beq		\false
+
+			bsr		Atoui
+		
 \true		ori.b 	#%00000100,ccr ; Set the Z flag to 1 (true).
 			jmp		\quit
 
-\quit		move.l	(a7)+,a0
-			rts
-
-			; ==============================
-
-IsMaxError	movem.l	a0/a1/d0,-(a7)
-			jsr 	StrLen
-			
-			cmp.l	#5,d0
-			blo		\lowereq
-			bhi		\higher
-			
-			movea.l	#S32767,a1
-			
-\loop		tst.b	(a0)
-			beq		\lowereq
-
-			cmp.b	(a1)+,(a0)+
-			bhi 	\higher
-			blo		\lowereq
-			jmp		\loop
-
-\lowereq	andi.b 	#%11111011,ccr ; Set the Z flag to 0 (false).
-			jmp		\quit
-			
-\higher		ori.b 	#%00000100,ccr ; Set the Z flag to 1 (true).
-			jmp		\quit
-
-\quit		movem.l	(a7)+,a0/a1/d0
-			rts
-
-			; ==============================
-
-Convert		move.l	a0,-(a7)
-			
-			cmpi.b	#0,(a0)
-			beq		\false
-			
-			jsr 	IsCharError
-			beq		\false
-			
-			jsr 	IsMaxError
-			beq		\false
-
-			jsr		Atoui
-			bra		\true
-
 \false		andi.b 	#%11111011,ccr ; Set the Z flag to 0 (false).
-			jmp		\quit
-			
-\true		ori.b 	#%00000100,ccr ; Set the Z flag to 1 (true).
-			jmp		\quit
 
-\quit		move.l	(a7)+,a0
-			rts
+\quit		rts
 
 			; ==============================
 
-Print		movem.l	d0-d2/a0,-(a7)
+Print		movem.l	d0-d1/a0,-(a7)
 
 \loop		move.b	(a0)+,d0
 			beq		\quit
 			
-			jsr 	PrintChar
+			bsr 	PrintChar
 			
 			addq.b	#1,d1	
 			bra		\loop
 
-\quit		movem.l	(a7)+,a0/d0-d2
+\quit		movem.l	(a7)+,d0-d1/a0
 			rts
 
 PrintChar 	incbin 	"PrintChar.bin"
 
 			; ==============================
 
-NextOp		move.l	d0,-(a7)
+NextOp		tst.b	(a0)
+			beq 	\quit
+			
+			cmpi.b	#'+',(a0)
+			beq 	\quit
 
-\loop		move.b	(a0),d0
-			beq		\quit
+			cmpi.b	#'-',(a0)
+			beq 	\quit
 
-			cmpi.b	#'+',d0
+			cmpi.b	#'*',(a0)
 			beq 	\quit
-			cmpi.b	#'-',d0
-			beq 	\quit
-			cmpi.b	#'*',d0
-			beq 	\quit
-			cmpi.b	#'/',d0
+
+			cmpi.b	#'/',(a0)
 			beq 	\quit
 
 			adda.l	#1,a0
-			bra		\loop
+			bra		NextOp
 
-\quit		move.l	(a7)+,d0
+\quit		rts
+
+			; ==============================
+
+GetNum		movem.l	d1/a1-a2,-(a7)
+			movea.l	a0,a1
+
+			bsr 	NextOp
+			movea.l	a0,a2
+			
+			move.b	(a2),d1
+			move.b	#0,(a2)
+			
+			movea.l	a1,a0
+			bsr 	Convert
+			bne		\false
+			
+			movea.l	a2,a0
+			move.b 	d1,(a2)
+			bra 	\true
+			
+\false		andi.b 	#%11111011,ccr ; Set the Z flag to 0 (false).
+			movea.l	a1,a0
+			move.l	#$AAAAAAAA,a6
+			bra 	\quit			
+			
+\true		ori.b 	#%00000100,ccr ; Set the Z flag to 1 (true).
+
+\quit		movem.l	(a7)+,d1/a1-a2
+			rts
+			
+			; ==============================
+
+GetExpr		movem.l	d1-d2/a0,-(a7)
+
+			bsr		GetNum
+			bne		\false
+			add.b	d0,d1
+			
+\loop		move.b	(a0),d2
+			adda.l	#1,a0
+			
+			tst.b	d2
+			beq		\true
+			
+			bsr		GetNum
+			bne		\false
+			
+			cmpi.b	#'+',(a0)
+			bra		\plop
+
+\plop		add.l	d0,d1
+			bra		\loop
+	
+\false		andi.b 	#%11111011,ccr ; Set the Z flag to 0 (false).
+			bra 	\quit
+			
+\true		ori.b 	#%00000100,ccr ; Set the Z flag to 1 (true).
+
+\quit		movem.l	(a7)+,d1-d2/a0
 			rts
 
 			; ==============================
@@ -215,24 +270,19 @@ NextOp		move.l	d0,-(a7)
 			
 ; Tests
 StringRS1 	dc.b 	" 5 +  12 ",0	; a0 contains "5+12",0
-
 StringCE1 	dc.b 	"512",0 		; returns 0
 StringCE2 	dc.b 	"5e12",0 		; returns 1
-
 StringME1 	dc.b 	"512",0			; returns 0
 StringME2 	dc.b 	"32000",0		; returns 0
 StringME3 	dc.b 	"32767",0		; returns 0
 StringME4 	dc.b 	"32768",0		; returns 1
-
 StringConv1 dc.b 	"1568",0		; returns 1 w/ D0 = 1568
 StringConv2 dc.b 	"879",0			; returns 1 w/ D0 = 879
 StringConv3	dc.b 	"8a9",0			; returns 0
 StringConv4 dc.b 	"",0			; returns 0
 StringConv5 dc.b 	"40000",0		; returns 0
-
 StringPrint	dc.b	"Hello, World!",0
-
-StringNO1	dc.b	"104+9*2-3",0
+StringNO1	dc.b	"104+2",0
 
 ; Constants
 S32767	 	dc.b 	"32767",0		; constant
