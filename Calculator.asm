@@ -12,24 +12,7 @@ vector_001 	dc.l 	Main
 			; ==============================
 
 			org 	$500
-Main 					
-			;movea.l #StringRS1,a0
-			;jsr 	RemoveSpace
-			
-			;movea.l	#StringCE1-2,a0
-			;jsr 	IsCharError
-			
-			;movea.l	#StringME1-4,a0
-			;jsr 	IsMaxError
-			
-			;movea.l	#StringConv1-5,a0
-			;jsr 	Convert
-			
-			;lea 	StringPrint,a0
-			;move.b 	#5,d1
-			;move.b 	#20,d2
-			;jsr 	Print
-			
+Main 		
 			movea.l	#StringNO1,a0
 			bsr		GetExpr
 			
@@ -68,6 +51,7 @@ Atoui		movem.l d1/a0,-(a7)
 			add.l d1,d0
 
 			bra		\loop
+			
 \quit		movem.l (a7)+,d1/a0
 			rts
 
@@ -236,33 +220,58 @@ GetNum		movem.l	d1/a1-a2,-(a7)
 			; ==============================
 
 GetExpr		movem.l	d1-d2/a0,-(a7)
+			
 			clr.l	d2
+			
 			bsr		GetNum
 			bne		\false
-			add.b	d0,d1
 			
-\loop		move.b	(a0),d2
-			adda.l	#1,a0
+			move.l	d0,d1
 			
+\loop		move.b	(a0)+,d2
+
 			tst.b	d2
 			beq		\true
 			
 			bsr		GetNum
 			bne		\false
 			
-			cmpi.b	#'+',(a0)
-			bra		\plop
-
+			cmpi.b	#'+',d2
+			beq		\plop
+			
+			cmpi.b	#'-',d2
+			beq		\miop
+			
+			cmpi.b	#'*',d2
+			beq		\muop
+			
+			cmpi.b	#'/',d2
+			beq		\diop
+			
 \plop		add.l	d0,d1
 			bra		\loop
-	
+			
+\miop		sub.l	d0,d1
+			bra		\loop
+			
+\muop		mulu.l	d0,d1
+			bra		\loop
+			
+\diop		tst.l	d0
+			beq		\false
+			divu.l	d0,d1
+			swap	d1
+			clr.w	d1
+			swap	d1
+			bra		\loop
+
 \false		andi.b 	#%11111011,ccr ; Set the Z flag to 0 (false).
 			bra 	\quit
 			
-\true		ori.b 	#%00000100,ccr ; Set the Z flag to 1 (true).
+\true		move.l	d1,d0
+			ori.b 	#%00000100,ccr ; Set the Z flag to 1 (true).
 
-\quit		move.l	d1,d0
-			movem.l	(a7)+,d1-d2/a0
+\quit		movem.l	(a7)+,d1-d2/a0
 			rts
 
 			; ==============================
@@ -283,7 +292,7 @@ StringConv3	dc.b 	"8a9",0			; returns 0
 StringConv4 dc.b 	"",0			; returns 0
 StringConv5 dc.b 	"40000",0		; returns 0
 StringPrint	dc.b	"Hello, World!",0
-StringNO1	dc.b	"104+2",0
+StringNO1	dc.b	"275-222",0
 
 ; Constants
 S32767	 	dc.b 	"32767",0		; constant
