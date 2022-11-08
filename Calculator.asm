@@ -13,8 +13,9 @@ vector_001 	dc.l 	Main
 
 			org 	$500
 Main 		
-			movea.l	#StringNO1,a0
-			bsr		GetExpr
+			move.l	#10825,d0
+			movea.l #StringTest,a0
+			bsr		Uitoa
 			
 			illegal
 			
@@ -39,16 +40,16 @@ StrLen 		move.l 	a0,-(a7) ; Save A0 on the stack.
 
 Atoui		movem.l d1/a0,-(a7)
 
-			clr.l d0
-			clr.l d1
+			clr.l 	d0
+			clr.l 	d1
 
-\loop		move.b (a0)+,d1
-			beq \quit
+\loop		move.b 	(a0)+,d1
+			beq 	\quit
 
-			subi.b #'0',d1
+			subi.b 	#'0',d1
 
-			mulu.w #10,d0
-			add.l d1,d0
+			mulu.w 	#10,d0
+			add.l 	d1,d0
 
 			bra		\loop
 			
@@ -273,26 +274,37 @@ GetExpr		movem.l	d1-d2/a0,-(a7)
 
 \quit		movem.l	(a7)+,d1-d2/a0
 			rts
+			
+			; ==============================
+
+Uitoa		movem.l	d1/a0,-(a7)
+			clr.l	d1
+
+			move.w	#0,-(a7)
+			
+\loop		divu.w	#10,d0
+			
+			swap	d0
+			add.w	#'0',d0
+			move.w	d0,-(a7)
+			clr.w	d0
+			swap	d0
+			
+			beq		\loop2
+			bra		\loop
+
+\loop2		move.w	(a7)+,d1
+			beq		\quit
+			move.b	d1,(a0)+
+			bra		\loop2
+
+\quit		move.b	#0,(a0)
+			movem.l	(a7)+,d1/a0
+			rts
 
 			; ==============================
 			; Data
 			; ==============================
 			
 ; Tests
-StringRS1 	dc.b 	" 5 +  12 ",0	; a0 contains "5+12",0
-StringCE1 	dc.b 	"512",0 		; returns 0
-StringCE2 	dc.b 	"5e12",0 		; returns 1
-StringME1 	dc.b 	"512",0			; returns 0
-StringME2 	dc.b 	"32000",0		; returns 0
-StringME3 	dc.b 	"32767",0		; returns 0
-StringME4 	dc.b 	"32768",0		; returns 1
-StringConv1 dc.b 	"1568",0		; returns 1 w/ D0 = 1568
-StringConv2 dc.b 	"879",0			; returns 1 w/ D0 = 879
-StringConv3	dc.b 	"8a9",0			; returns 0
-StringConv4 dc.b 	"",0			; returns 0
-StringConv5 dc.b 	"40000",0		; returns 0
-StringPrint	dc.b	"Hello, World!",0
-StringNO1	dc.b	"275-222",0
-
-; Constants
-S32767	 	dc.b 	"32767",0		; constant
+StringTest	dc.b	"       ",0
