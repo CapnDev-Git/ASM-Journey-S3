@@ -13,34 +13,44 @@ vector_001 	dc.l 	Main
 
 		org 	$500
 
-Main 		lea	sPrompt,a0
-		move.b	#0,d1
-		move.b	#0,d2
+Main 		movea.l	#sInput,a0
+		clr.b	d1
+		clr.b	d2
 		bsr	Print
 
-		movea.l	#sExpression,a0
-		addq.b	#1,d2
+		movea.l	#sBuffer,a0
+		addq.b	#2,d2
 		move.l	#300000,d3
 		move.l	#40000,d4
 		bsr 	GetInput
 			
-		bsr	GetExpr
-		lea	sResult,a0
-		addq.b	#1,d2
+		bsr	RemoveSpace	
+		
+		movea.l	#sResult,a0
+		addq.b	#2,d2
 		bsr	Print
 		
-		bsr 	Itoa
-		addq.b	#1,d2
-		bsr	Print
-			
-		illegal
+		addq.b	#2,d2
+		
+		movea.l	#sBuffer,a0
+		bsr 	GetExpr2
+		bne	\error
+		
+\noError	bsr 	Itoa
+		bsr 	Print
+		bra	\quit
+
+\error		movea.l	#sError,a0
+		bsr Print
+		
+\quit		illegal
 			
 		; ==============================
 		; Subroutines
 		; ==============================
 
-PrintChar 	incbin 	"PrintChar.bin"
 GetInput	incbin	"GetInput.bin"
+PrintChar 	incbin 	"PrintChar.bin"
 
 StrLen 		move.l 	a0,-(a7) ; Save A0 on the stack.
 			
@@ -186,7 +196,7 @@ Print		movem.l	d0-d1/a0,-(a7)
 
 		; ==============================
 
-NextOp		tst.b	(a0)
+NextOp1		tst.b	(a0)
 		beq 	\quit
 			
 		cmpi.b	#'+',(a0)
@@ -195,23 +205,33 @@ NextOp		tst.b	(a0)
 		cmpi.b	#'-',(a0)
 		beq 	\quit
 
+		addq.l	#1,a0
+		bra	NextOp1
+
+\quit		rts
+
+		; ==============================
+
+NextOp2		tst.b	(a0)
+		beq 	\quit
+
 		cmpi.b	#'*',(a0)
 		beq 	\quit
 
 		cmpi.b	#'/',(a0)
 		beq 	\quit
 
-		adda.l	#1,a0
-		bra	NextOp
+		addq.l	#1,a0
+		bra	NextOp2
 
 \quit		rts
 
 		; ==============================
 
-GetNum		movem.l	d1/a1-a2,-(a7)
+GetNum1		movem.l	d1/a1-a2,-(a7)
 		movea.l	a0,a1
-
-		bsr 	NextOp
+		
+		bsr 	NextOp2
 		movea.l	a0,a2
 			
 		move.b	(a2),d1
@@ -231,12 +251,38 @@ GetNum		movem.l	d1/a1-a2,-(a7)
 
 \quit		movem.l	(a7)+,d1/a1-a2
 		rts
+		
+		; ==============================
+
+GetNum2		movem.l	d1/a1-a2,-(a7)
+		movea.l	a0,a1
+		
+		bsr 	NextOp1
+		movea.l	a0,a2
+			
+		move.b	(a2),d1
+		clr.b	(a2)
+			
+		movea.l	a1,a0
+		bsr 	GetExpr1
+		beq	\true
+		
+\false		move.b 	d1,(a2)
+		andi.b 	#%11111011,ccr
+		bra 	\quit	
+			
+\true		move.b 	d1,(a2)
+		movea.l	a2,a0
+		ori.b 	#%00000100,ccr 
+
+\quit		movem.l	(a7)+,d1/a1-a2
+		rts
 			
 		; ==============================
 
-GetExpr		movem.l	d1-d2/a0,-(a7)
+GetExpr1	movem.l	d1-d2/a0,-(a7)
 			
-		bsr	GetNum
+		bsr	GetNum1
 		bne	\false
 			
 		move.l	d0,d1
@@ -244,25 +290,11 @@ GetExpr		movem.l	d1-d2/a0,-(a7)
 \loop		move.b	(a0)+,d2
 		beq	\true
 			
-		bsr	GetNum
+		bsr	GetNum1
 		bne	\false
-			
-		cmpi.b	#'+',d2
-		beq	\adt
-			
-		cmpi.b	#'-',d2
-		beq	\subtract
-		
-		cmpi.b	#'*',d2
-		beq	\multiply
-			
-		bra	\divide
-			
-\adt		add.l	d0,d1
-		bra	\loop
-			
-\subtract	sub.l	d0,d1
-		bra	\loop
+
+		cmpi.b	#'/',d2			
+		beq	\divide
 			
 \multiply	mulu.l	d0,d1
 		bra	\loop
@@ -272,6 +304,39 @@ GetExpr		movem.l	d1-d2/a0,-(a7)
 		divs.w	d0,d1
 		ext.l	d1
 		bra	\loop
+
+\false		andi.b 	#%11111011,ccr
+		bra 	\quit
+			
+\true		move.l	d1,d0
+		ori.b 	#%00000100,ccr 
+
+\quit		movem.l	(a7)+,d1-d2/a0
+		rts
+		
+		; ==============================
+
+GetExpr2	movem.l	d1-d2/a0,-(a7)
+			
+		bsr	GetNum2
+		bne	\false
+			
+		move.l	d0,d1
+			
+\loop		move.b	(a0)+,d2
+		beq	\true
+			
+		bsr	GetNum2
+		bne	\false
+
+		cmpi.b	#'-',d2			
+		beq	\subtract
+		
+\add		add.l 	d0,d1
+ 		bra 	\loop
+
+\subtract	sub.l 	d0,d1
+		bra 	\loop
 
 \false		andi.b 	#%11111011,ccr
 		bra 	\quit
@@ -307,22 +372,24 @@ Uitoa		movem.l	d0/a0,-(a7)
 			
 		; ==============================
 			
-Itoa		tst.w	d0
-		bmi	\negative
-		bsr	Uitoa
-		bra 	\quit
-			
+Itoa		movem.l	d0/a0,-(a7)
+
+		tst.w	d0
+		bpl	\positive
+
 \negative	move.b	#'-',(a0)+
 		neg.w	d0
-		bsr	Uitoa
+		
+\positive	jsr 	Uitoa
 			
-\quit		rts
+\quit		movem.l	(a7)+,d0/a0
+		rts
 
 		; ==============================
 		; Data
 		; ==============================
 
-sPrompt		dc.b	"Enter an expression:",0
-sExpression	ds.b	60
-sResult		dc.b	"Result:"
-sBufferRes	ds.b	60
+sInput	dc.b	"Enter an expression:",0
+sResult		dc.b	"Result:",0
+sError		dc.b	"Error",0
+sBuffer		ds.b	60
